@@ -1,8 +1,7 @@
-from bs4 import BeautifulSoup
-import requests
+import os
 import sqlite3
 from selenium import webdriver
-import time
+
 from selenium.webdriver.common.by import By
 
 
@@ -10,6 +9,7 @@ conn = sqlite3.connect('FNS-MSP-2019-sg2.sqlite3', check_same_thread=False)
 
 inn_list = []
 director_list = []
+error_inns = []  # если гендир не найден, сюда добалвяется инн
 
 cursor = conn.cursor()
 cursor.execute("""
@@ -24,30 +24,42 @@ for row in records:
 cursor.close()
 print(inn_list)
 
-driver = webdriver.Chrome(executable_path=r'D:\Dev\SeleinumDb\chromedriver\chromedriver.exe')
-
 
 url = 'https://www.rusprofile.ru/'
 
-try:
-     driver.get(url=url)
+inn_check_error_text = "гендир не найден"
 
-     inn_imput = driver.find_element(by=By.NAME, value='query')
-     inn_imput.clear()
-     inn_imput.send_keys('5321186807')
-     my_click = driver.find_element(By.CSS_SELECTOR, '[class = "search-btn waves-effect waves-light"]').click()
+driver_path = os.path.abspath(os.curdir + '/chromedriver/chromedriver.exe')
 
-     gen_dir = driver.find_element(By.CSS_SELECTOR, '[data-goal-param = "interactions, person_ul"]')
-     print(gen_dir.text)
 
-except Exception as ex:
-     print(ex)
-finally:
-     driver.close()
-     driver.quit()
+def run_check(inn):
+     try:
+          driver = webdriver.Chrome(executable_path=driver_path)
+          driver.get(url=url)
 
-# res = requests.get(url)
-#
-# soup = BeautifulSoup(res.text, 'lxml')
-# print(soup)
+          inn_imput = driver.find_element(by=By.NAME, value='query')
+          inn_imput.clear()
+          inn_imput.send_keys(inn_list[i])
+          my_click = driver.find_element(By.CSS_SELECTOR, '[class = "search-btn waves-effect waves-light"]').click()
 
+          gen_dir = driver.find_element(By.CSS_SELECTOR, '[data-goal-param = "interactions, person_ul"]')
+          # director_list.append(gen_dir.text)
+          return gen_dir.text
+
+     except Exception as ex:
+          print(ex)
+          return inn_check_error_text
+     finally:
+          driver.close()
+          driver.quit()
+
+
+for i in range(len(inn_list)):
+     result = run_check(inn_list[i])
+     if not result == inn_check_error_text:
+          director_list.append(result)
+     else:
+          error_inns.append(inn_list[i])
+
+
+print(director_list)
